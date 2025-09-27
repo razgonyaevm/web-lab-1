@@ -23,18 +23,7 @@ class NotificationManager {
         this.clearAllToasts();
 
         const toast = document.createElement('div');
-        toast.style.position = 'fixed';
-        toast.style.top = '20px';
-        toast.style.right = '20px';
-        toast.style.background = 'linear-gradient(to right, #ff6b6b, #ee5a24)';
-        toast.style.color = 'white';
-        toast.style.padding = '10px 15px';
-        toast.style.borderRadius = '5px';
-        toast.style.zIndex = '9999';
-        toast.style.maxWidth = '300px';
-        toast.style.wordWrap = 'break-word';
-        toast.style.cursor = 'pointer';
-        toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+        toast.className = 'toast-notification'
         toast.textContent = options.text;
 
         toast.onclick = () => this.clearAllToasts();
