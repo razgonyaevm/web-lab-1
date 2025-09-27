@@ -8,7 +8,7 @@ const CONFIG = {
 
 // Функция для получения полного URL
 function getServerURL() {
-    const { HOST, PORT, PATH } = CONFIG.SERVER;
+    const {HOST, PORT, PATH} = CONFIG.SERVER;
     return `http://${HOST}:${PORT}${PATH}`;
 }
 
@@ -251,7 +251,8 @@ function redrawAllPoints() {
     if (points && points.length > 0) {
         points.forEach(point => {
             if (point && point.x !== undefined && point.y !== undefined) {
-            drawPoint(ctx, point.x, point.y, currentR, point.isInArea, false);
+                // Для сохраненных точек используем исходный радиус и статус
+                drawPoint(ctx, point.x, point.y, point.r, point.isInArea, false);
             }
         });
     }
@@ -397,12 +398,19 @@ function handleFormSubmit(e) {
             localStorage.setItem("session", JSON.stringify(jsonData));
             updateResultsTable(jsonData.results);
 
-            // Обновляем весь массив точек из всех результатов, чтобы отображение на графике было корректным
-            points = jsonData.results.map(result => ({
-                x: result.x,
-                y: result.y,
-                isInArea: result.isInArea
-            }));
+            const lastResultMap = new Map();
+            jsonData.results.forEach(result => {
+               const key = `${result.x},${result.y}`;
+               if (!lastResultMap.has(key)) {
+                   lastResultMap.set(key, {
+                       x: result.x,
+                       y: result.y,
+                       r: result.r,
+                       isInArea: result.isInArea
+                   });
+               }
+            });
+            points = Array.from(lastResultMap.values());
 
             // Очищаем точку предпросмотра
             previewPoint = null;
@@ -638,13 +646,23 @@ function loadSavedResults() {
                 if (jsonData && jsonData.results && jsonData.results.length > 0) {
                     updateResultsTable(jsonData.results);
 
-                    // Сохраняем все точки в массив с проверкой
+                    // Сохраняем только последние результаты для каждой уникальной координаты (x, y)
                     if (jsonData.results && Array.isArray(jsonData.results)) {
-                        points = jsonData.results.map(result => ({
-                            x: result.x,
-                            y: result.y,
-                            isInArea: result.isInArea
-                        })).filter(point => point.x !== undefined && point.y !== undefined);
+                        const lastResultMap = new Map();
+                        jsonData.results.forEach(result => {
+                            const key = `${result.x},${result.y}`;
+                            if (!lastResultMap.has(key)) {
+                                lastResultMap.set(key, {
+                                    x: result.x,
+                                    y: result.y,
+                                    r: result.r,
+                                    isInArea: result.isInArea
+                                });
+                            }
+                        });
+
+                        points = Array.from(lastResultMap.values())
+                            .filter(point => point.x !== undefined && point.y !== undefined);
                     } else {
                         points = [];
                     }
