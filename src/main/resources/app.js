@@ -112,13 +112,70 @@ function setupInputHandlers() {
         input.addEventListener('change', updatePreviewPoint);
     });
 
-    // Обработчик для поля Y - замена запятых на точки
+    // Обработчик для поля Y - замена запятых на точки, валидация ввода в реальном времени
     const yInput = document.querySelector('#y');
     if (yInput) {
+        yInput.addEventListener('keydown', function (e) {
+            // Разрешено: цифры, точка, запятая, минус, Backspace, Delete, стрелки
+            const allowedKeys = [
+                'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight',
+                'ArrowUp', 'ArrowDown', 'Tab', 'Home', 'End'
+            ];
+
+            // Разрешено управляющие клавиши
+            if (allowedKeys.includes(e.key)) {
+                return true;
+            }
+
+            // Разрешено цифры
+            if (e.key >= '0' && e.key <= '9') {
+                return true;
+            }
+
+            // Разрешена точка, запятая и минус в начале
+            if (e.key === '.' || e.key === ',' || e.key === '-') {
+                if (e.key === '-') {
+                    if (this.selectionStart !== 0 || this.value.includes('-')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+
+                // Проверка, что точка/запятая только одна
+                if ((e.key === '.' || e.key === ',') &&
+                    (this.value.includes('.') || this.value.includes(','))) {
+                    e.preventDefault();
+                    return false;
+                }
+                return true;
+            }
+
+            // Запрещено все остальное
+            e.preventDefault();
+            return false;
+        });
+
+
         yInput.addEventListener('input', function () {
             // Заменяем запятые на точки в реальном времени
             if (this.value.includes(',')) {
                 this.value = this.value.replace(',', '.');
+            }
+
+            // Удаляем лишние минусы (оставляем только первый)
+            const minusCount = (this.value.match(/-/g) || []).length;
+            if (minusCount > 1) {
+                this.value = this.value.replace(/-/g, '');
+                if (this.value.length > 0 && this.value[0] !== '-') {
+                    this.value = '-' + this.value;
+                }
+            }
+
+            // Удаляем лишние точки (оставляем только первую)
+            const dotCount = (this.value.match(/\./g) || []).length;
+            if (dotCount > 1) {
+                const parts = this.value.split('.');
+                this.value = parts[0] + '.' + parts.slice(1).join('');
             }
 
             // Проверяем, что вход соответствует числовому формату
@@ -126,6 +183,7 @@ function setupInputHandlers() {
                 // Если ввод невалидный, очищаем предпросмотр
                 previewPoint = null;
             }
+
             updatePreviewPoint();
         });
     }
@@ -389,15 +447,15 @@ function handleFormSubmit(e) {
 
             const lastResultMap = new Map();
             jsonData.results.forEach(result => {
-               const key = `${result.x},${result.y}`;
-               if (!lastResultMap.has(key)) {
-                   lastResultMap.set(key, {
-                       x: result.x,
-                       y: result.y,
-                       r: result.r,
-                       isInArea: result.isInArea
-                   });
-               }
+                const key = `${result.x},${result.y}`;
+                if (!lastResultMap.has(key)) {
+                    lastResultMap.set(key, {
+                        x: result.x,
+                        y: result.y,
+                        r: result.r,
+                        isInArea: result.isInArea
+                    });
+                }
             });
             points = Array.from(lastResultMap.values());
 
