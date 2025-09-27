@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторная работа: Проверка попадания точки в область</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="header">
+    Разработчик: Разгоняев Максим Витальевич<br>
+    Группа: P3231<br>
+    Вариант: 467211
+    <div id="current-time" style="font-size: 14px; margin-top: 5px;"></div>
+</div>
+
+<div class="graph">
+    <canvas id="canvas" width="360" height="360" style="border: 1px solid #000;"></canvas>
+</div>
+
+<div class="form">
+    <form id="inputForm">
+        <label for="x">X (выберите значение):</label>
+        <div class="radio-group">
+            <input type="radio" name="x" value="-3"> -3
+            <input type="radio" name="x" value="-2"> -2
+            <input type="radio" name="x" value="-1"> -1
+            <input type="radio" name="x" value="0"> 0
+            <input type="radio" name="x" value="1"> 1
+            <input type="radio" name="x" value="2"> 2
+            <input type="radio" name="x" value="3"> 3
+            <input type="radio" name="x" value="4"> 4
+        </div>
+
+        <label for="y">Y (от -5 до 5):</label> <br>
+        <input type="text" name="y" id="y"> <br>
+
+        <label for="r">R (выберите значение):</label>
+        <div class="radio-group">
+            <input type="radio" name="r" value="1" checked> 1
+            <input type="radio" name="r" value="2"> 2
+            <input type="radio" name="r" value="3"> 3
+            <input type="radio" name="r" value="4"> 4
+            <input type="radio" name="r" value="5"> 5
+        </div>
+
+        <button type="button" class="submit-btn" onclick="submitForm()">Отправить</button>
+    </form>
+</div>
+
+<div class="results">
+    <table id="resultsTable">
+        <thead>
+        <tr>
+            <th>X</th>
+            <th>Y</th>
+            <th>R</th>
+            <th>Попадание</th>
+            <th>Текущее время</th>
+            <th>Время выполнения</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>
