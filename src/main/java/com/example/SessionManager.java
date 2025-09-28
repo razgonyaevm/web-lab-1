@@ -45,10 +45,34 @@ public class SessionManager {
 
   /** Получает все результаты для сессии в обратном порядке (сначала самые новые) */
   public static List<CalculationResult> getResults(String sessionId) {
-    List<CalculationResult> session = getSession(sessionId);
+    List<CalculationResult> session = sessions.get(sessionId);
+
+    // Если нет в памяти - загружаем из файла
+    if (session == null) {
+      session = loadSessionFromFile(sessionId);
+      if (session != null) {
+        sessions.put(sessionId, session);
+      } else {
+        // если нет файла - создаем пустую сессию
+        session = new ArrayList<>();
+        sessions.put(sessionId, session);
+      }
+    }
+
     List<CalculationResult> reversed = new ArrayList<>(session);
     Collections.reverse(reversed);
     return reversed;
+  }
+
+  /** Загружает сессию из файла по sessionId */
+  private static List<CalculationResult> loadSessionFromFile(String sessionId) {
+    try {
+      Path sessionFile = Paths.get(SESSIONS_DIR, sessionId + SESSION_FILE_EXT);
+      return loadSession(sessionFile);
+    } catch (Exception e) {
+      System.err.println("Warning: Could not load session " + sessionId + ": " + e.getMessage());
+      return null;
+    }
   }
 
   /** Загружает все сессии из файлов */
@@ -67,10 +91,12 @@ public class SessionManager {
     }
   }
 
-  /** Загружает сессию из файла */
-  private static void loadSession(Path sessionFile) {
+  /** Загружает сессию из файла по пути */
+  private static List<CalculationResult> loadSession(Path sessionFile) {
     try {
-      String sessionId = sessionFile.getFileName().toString().replace(SESSION_FILE_EXT, "");
+      if (!Files.exists(sessionFile)) {
+        return null;
+      }
 
       List<CalculationResult> results = new ArrayList<>();
 
@@ -86,12 +112,11 @@ public class SessionManager {
         }
       }
 
-      if (!results.isEmpty()) {
-        sessions.put(sessionId, results);
-      }
+      return results;
     } catch (IOException e) {
       System.err.println(
           "Warning: Could not load session from " + sessionFile + ": " + e.getMessage());
+      return null;
     }
   }
 
@@ -100,12 +125,12 @@ public class SessionManager {
     try {
       String[] parts = line.split("\\|");
       if (parts.length >= 6) {
-        double x = Double.parseDouble(parts[0]);
-        double y = Double.parseDouble(parts[1]);
-        double r = Double.parseDouble(parts[2]);
+        double x = Double.parseDouble(parts[0].replace(',', '.'));
+        double y = Double.parseDouble(parts[1].replace(',', '.'));
+        double r = Double.parseDouble(parts[2].replace(',', '.'));
         boolean isInArea = Boolean.parseBoolean(parts[3]);
         String currentTime = parts[4];
-        double executionTime = Double.parseDouble(parts[5]);
+        double executionTime = Double.parseDouble(parts[5].replace(',', '.'));
 
         return new CalculationResult(x, y, r, isInArea, currentTime, executionTime);
       }
@@ -124,6 +149,8 @@ public class SessionManager {
         for (CalculationResult result : results) {
           writer.println(
               String.format(
+                  // В данной локали используется запятая как разделитель
+                  Locale.US,
                   "%.6f|%.6f|%.6f|%s|%s|%.6f",
                   result.x(),
                   result.y(),
