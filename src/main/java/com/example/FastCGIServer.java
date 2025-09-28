@@ -151,11 +151,8 @@ public class FastCGIServer {
 
     // Генерируем или извлекаем session ID
     if (sessionId == null || sessionId.trim().isEmpty()) {
-      sessionId =
-          "session_"
-              + System.currentTimeMillis()
-              + "_"
-              + Integer.toHexString((int) (Math.random() * 10000));
+      System.out.println(errorResult("Missing sessionId parameter"));
+      return;
     }
 
     // Добавляем в сессию

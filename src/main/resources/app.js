@@ -45,6 +45,55 @@ class NotificationManager {
     }
 }
 
+class CookieManager {
+    static get(name) {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [cookieName, cookieValue] = cookie.trim().split('=');
+            if (cookieName === name) {
+                return decodeURIComponent(cookieValue);
+            }
+        }
+        return null;
+    }
+
+    static set(name, value, days = 365) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + date.toUTCString();
+        document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/;SameSite=Strict";
+    }
+
+    static delete(name) {
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";
+    }
+}
+
+// Генерация безопасного sessionId
+function generateSecureSessionId() {
+    const array = new Uint8Array(32);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Функция для получения или создания sessionId
+function getOrCreateSessionId() {
+    let sessionId = CookieManager.get('sessionId');
+
+    if (!sessionId || !isValidSessionId(sessionId)) {
+        sessionId = 'sess_' + generateSecureSessionId();
+        CookieManager.set('sessionId', sessionId);
+        console.log('Created new session:', sessionId);
+    }
+
+    return sessionId;
+}
+
+// Функция для проверки sessionId
+function isValidSessionId(sessionId) {
+    return sessionId && sessionId.startsWith('sess_') && sessionId.length > 36;
+}
+
 const notificationManager = new NotificationManager();
 
 let isSubmitting = false;
@@ -57,6 +106,9 @@ let previewPoint = null; // Точка для предпросмотра
 document.addEventListener("DOMContentLoaded", () => {
     // Генерируем уникальный ID для этой вкладки
     tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+    // Создаем или получаем sessionId при загрузке страницы
+    getOrCreateSessionId();
 
     // Запускаем обновление времени
     updateDateTime();
@@ -418,13 +470,8 @@ function handleFormSubmit(e) {
     formData.append('yVal', yVal);
     formData.append('rVal', rVal);
 
-    // Добавляем sessionId (используем существующий или создаем новый)
-    let sessionId = localStorage.getItem('sessionId');
-    // Проверяем валидность существующего sessionId
-    if (!sessionId || !isValidSessionId(sessionId)) {
-        sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('sessionId', sessionId);
-    }
+    // Получаем sessionId из cookies
+    const sessionId = getOrCreateSessionId();
     formData.append('sessionId', sessionId);
 
     // Отправляем запрос
@@ -474,11 +521,6 @@ function handleFormSubmit(e) {
         .finally(() => {
             resetFormState();
         });
-}
-
-// Функция для проверки sessionId
-function isValidSessionId(sessionId) {
-    return sessionId && sessionId.startsWith('session_') && sessionId.length > 10;
 }
 
 // Функция для получения значения выбранной радиокнопки
@@ -678,7 +720,7 @@ function updateResultsTable(results) {
 
 // Функция для загрузки сохраненных результатов
 function loadSavedResults() {
-    const sessionId = localStorage.getItem('sessionId');
+    const sessionId = CookieManager.get('sessionId');
     if (sessionId) {
         fetch(`${getServerURL()}?sessionId=${encodeURIComponent(sessionId)}`, {
             method: 'GET'
@@ -736,7 +778,7 @@ function loadSavedResults() {
 
 // Функция для очистки сессии
 function clearSession() {
-    const sessionId = localStorage.getItem('sessionId');
+    const sessionId = CookieManager.get('sessionId');
     if (!sessionId) {
         notificationManager.showToast({
             text: "Нет активной сессии для очистки"
@@ -756,9 +798,8 @@ function clearSession() {
     })
         .then(response => {
             if (response.ok) {
-                // Очищаем локальное хранилище
-                localStorage.removeItem('sessionId');
-                localStorage.removeItem('session');
+                // Очищаем cookie сессии
+                CookieManager.delete('sessionId');
 
                 // Очищаем таблицу результатов
                 updateResultsTable([]);
