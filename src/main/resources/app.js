@@ -733,3 +733,58 @@ function loadSavedResults() {
             });
     }
 }
+
+// Функция для очистки сессии
+function clearSession() {
+    const sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+        notificationManager.showToast({
+            text: "Нет активной сессии для очистки"
+        });
+        return;
+    }
+
+    const cleanBtn = document.querySelector('.clean-btn');
+    if (cleanBtn) {
+        cleanBtn.disabled = true;
+        cleanBtn.textContent = "Очистка...";
+    }
+
+    // Отправляем запрос на очистку сессии
+    fetch(`${getServerURL()}?sessionId=${encodeURIComponent(sessionId)}&action=clear`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.ok) {
+                // Очищаем локальное хранилище
+                localStorage.removeItem('sessionId');
+                localStorage.removeItem('session');
+
+                // Очищаем таблицу результатов
+                updateResultsTable([]);
+
+                // Очищаем точки на графике
+                points = [];
+                previewPoint = null;
+                redrawGraph();
+
+                notificationManager.showToast({
+                    text: "Сессия успешно очищена"
+                });
+            } else {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка очистки сессии:', error);
+            notificationManager.showToast({
+                text: `Ошибка очистки сессии: ${error.message}`
+            });
+        })
+        .finally(() => {
+            if (cleanBtn) {
+                cleanBtn.disabled = false;
+                cleanBtn.textContent = "Очистить сессию";
+            }
+        });
+}

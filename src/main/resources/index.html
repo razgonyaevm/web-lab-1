@@ -73,6 +73,15 @@
             margin-left: 10%;
         }
 
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+
+        .submit-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -108,6 +117,24 @@
             font-family: Arial, sans-serif;
             font-size: 14px;
             transition: opacity 0.3s ease;
+        }
+
+        .clean-btn {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .clean-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .clean-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
 
     </style>
@@ -151,6 +178,7 @@
         </div>
 
         <button type="button" class="submit-btn" onclick="submitForm()">Отправить</button>
+        <button type="button" class="clean-btn" onclick="clearSession()">Очистить сессию</button>
     </form>
 </div>
 

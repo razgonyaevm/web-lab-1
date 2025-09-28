@@ -137,4 +137,21 @@ public class SessionManager {
       System.err.println("Warning: Could not save session " + sessionId + ": " + e.getMessage());
     }
   }
+
+  public static boolean clearSession(String sessionId) {
+    try {
+      // Удаляем из памяти
+      List<CalculationResult> removed = sessions.remove(sessionId);
+
+      // Удаляем файл сессии
+      Path sessionFile = Paths.get(SESSIONS_DIR, sessionId + SESSION_FILE_EXT);
+      boolean fileDeleted = Files.deleteIfExists(sessionFile);
+
+      return removed != null || fileDeleted;
+    } catch (IOException e) {
+      System.err.println(
+          "Warning: Could not delete session file " + sessionId + ": " + e.getMessage());
+      return false;
+    }
+  }
 }

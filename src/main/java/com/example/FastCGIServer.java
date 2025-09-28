@@ -32,6 +32,11 @@ public class FastCGIServer {
         continue;
       }
 
+      if (method.equals("DELETE")) {
+        handleGetRequest();
+        continue;
+      }
+
       System.out.println(errorResult("Unsupported HTTP method: " + method));
     }
   }
@@ -40,6 +45,7 @@ public class FastCGIServer {
   private static void handleGetRequest() {
     String queryString = FCGIInterface.request.params.getProperty("QUERY_STRING");
     String scriptName = FCGIInterface.request.params.getProperty("SCRIPT_NAME");
+    String requestMethod = FCGIInterface.request.params.getProperty("REQUEST_METHOD");
 
     // Проверяем, что это запрос к нашему скрипту
     if (scriptName == null || !scriptName.equals("/fcgi-bin/app.jar")) {
@@ -50,6 +56,22 @@ public class FastCGIServer {
     // Парсим параметры из query string
     Map<String, String> params = parseQueryString(queryString);
     String sessionId = params.get("sessionId");
+    String action = params.get("action");
+
+    if ("DELETE".equals(requestMethod) && "clear".equals(action)) {
+      if (sessionId != null && !sessionId.trim().isEmpty()) {
+        boolean deleted = SessionManager.clearSession(sessionId.trim());
+        if (deleted) {
+          System.out.println(
+              successJsonResult("{\"status\": \"success\", \"message\": \"Session cleared\"}"));
+        } else {
+          System.out.println(errorResult("Session not found"));
+        }
+      } else {
+        System.out.println(errorResult("Missing sessionId parameter"));
+      }
+      return;
+    }
 
     if (sessionId != null && !sessionId.trim().isEmpty()) {
       List<SessionManager.CalculationResult> allResults =
