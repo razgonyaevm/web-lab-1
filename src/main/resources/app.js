@@ -45,55 +45,6 @@ class NotificationManager {
     }
 }
 
-class CookieManager {
-    static get(name) {
-        const cookies = document.cookie.split(';');
-        for (let cookie of cookies) {
-            const [cookieName, cookieValue] = cookie.trim().split('=');
-            if (cookieName === name) {
-                return decodeURIComponent(cookieValue);
-            }
-        }
-        return null;
-    }
-
-    static set(name, value, days = 365) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        const expires = "expires=" + date.toUTCString();
-        document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/;SameSite=Strict";
-    }
-
-    static delete(name) {
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/";
-    }
-}
-
-// Генерация безопасного sessionId
-function generateSecureSessionId() {
-    const array = new Uint8Array(32);
-    window.crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
-// Функция для получения или создания sessionId
-function getOrCreateSessionId() {
-    let sessionId = CookieManager.get('sessionId');
-
-    if (!sessionId || !isValidSessionId(sessionId)) {
-        sessionId = 'sess_' + generateSecureSessionId();
-        CookieManager.set('sessionId', sessionId);
-        console.log('Created new session:', sessionId);
-    }
-
-    return sessionId;
-}
-
-// Функция для проверки sessionId
-function isValidSessionId(sessionId) {
-    return sessionId && sessionId.startsWith('sess_') && sessionId.length > 36;
-}
-
 const notificationManager = new NotificationManager();
 
 let isSubmitting = false;
@@ -106,9 +57,6 @@ let previewPoint = null; // Точка для предпросмотра
 document.addEventListener("DOMContentLoaded", () => {
     // Генерируем уникальный ID для этой вкладки
     tabId = 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-    // Создаем или получаем sessionId при загрузке страницы
-    getOrCreateSessionId();
 
     // Запускаем обновление времени
     updateDateTime();
@@ -470,10 +418,6 @@ function handleFormSubmit(e) {
     formData.append('yVal', yVal);
     formData.append('rVal', rVal);
 
-    // Получаем sessionId из cookies
-    const sessionId = getOrCreateSessionId();
-    formData.append('sessionId', sessionId);
-
     // Отправляем запрос
     fetch(getServerURL(), {
         method: 'POST',
@@ -720,72 +664,61 @@ function updateResultsTable(results) {
 
 // Функция для загрузки сохраненных результатов
 function loadSavedResults() {
-    const sessionId = CookieManager.get('sessionId');
-    if (sessionId) {
-        fetch(`${getServerURL()}?sessionId=${encodeURIComponent(sessionId)}`, {
-            method: 'GET'
+    fetch(getServerURL(), {
+        method: 'GET'
+    })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error(`Ошибка сервера: ${response.status}`);
         })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
+        .then(jsonData => {
+            if (jsonData && jsonData.results && jsonData.results.length > 0) {
+                updateResultsTable(jsonData.results);
+
+                // Сохраняем только последние результаты для каждой уникальной координаты (x, y)
+                if (jsonData.results && Array.isArray(jsonData.results)) {
+                    const lastResultMap = new Map();
+                    jsonData.results.forEach(result => {
+                        const key = `${result.x},${result.y}`;
+                        if (!lastResultMap.has(key)) {
+                            lastResultMap.set(key, {
+                                x: result.x,
+                                y: result.y,
+                                r: result.r,
+                                isInArea: result.isInArea
+                            });
+                        }
+                    });
+
+                    points = Array.from(lastResultMap.values())
+                        .filter(point => point.x !== undefined && point.y !== undefined);
+                } else {
+                    points = [];
                 }
-                throw new Error(`Ошибка сервера: ${response.status}`);
-            })
-            .then(jsonData => {
-                if (jsonData && jsonData.results && jsonData.results.length > 0) {
-                    updateResultsTable(jsonData.results);
 
-                    // Сохраняем только последние результаты для каждой уникальной координаты (x, y)
-                    if (jsonData.results && Array.isArray(jsonData.results)) {
-                        const lastResultMap = new Map();
-                        jsonData.results.forEach(result => {
-                            const key = `${result.x},${result.y}`;
-                            if (!lastResultMap.has(key)) {
-                                lastResultMap.set(key, {
-                                    x: result.x,
-                                    y: result.y,
-                                    r: result.r,
-                                    isInArea: result.isInArea
-                                });
-                            }
-                        });
+                // Устанавливаем текущее R из последнего результата
+                const lastResult = jsonData.results[0];
+                currentR = lastResult.r;
 
-                        points = Array.from(lastResultMap.values())
-                            .filter(point => point.x !== undefined && point.y !== undefined);
-                    } else {
-                        points = [];
-                    }
-
-                    // Устанавливаем текущее R из последнего результата
-                    const lastResult = jsonData.results[0];
-                    currentR = lastResult.r;
-
-                    // Устанавливаем соответствующую радиокнопку R
-                    const rInput = document.querySelector(`input[name="r"][value="${currentR}"]`);
-                    if (rInput) {
-                        rInput.checked = true;
-                    }
-
-                    // Перерисовываем график и точки
-                    redrawGraph();
+                // Устанавливаем соответствующую радиокнопку R
+                const rInput = document.querySelector(`input[name="r"][value="${currentR}"]`);
+                if (rInput) {
+                    rInput.checked = true;
                 }
-            })
-            .catch(error => {
-                console.error('Ошибка загрузки результатов:', error);
-            });
-    }
+
+                // Перерисовываем график и точки
+                redrawGraph();
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки результатов:', error);
+        });
 }
 
 // Функция для очистки сессии
 function clearSession() {
-    const sessionId = CookieManager.get('sessionId');
-    if (!sessionId) {
-        notificationManager.showToast({
-            text: "Нет активной сессии для очистки"
-        });
-        return;
-    }
-
     const cleanBtn = document.querySelector('.clean-btn');
     if (cleanBtn) {
         cleanBtn.disabled = true;
@@ -793,14 +726,11 @@ function clearSession() {
     }
 
     // Отправляем запрос на очистку сессии
-    fetch(`${getServerURL()}?sessionId=${encodeURIComponent(sessionId)}&action=clear`, {
+    fetch(getServerURL() + '?action=clear', {
         method: 'DELETE'
     })
         .then(response => {
             if (response.ok) {
-                // Очищаем cookie сессии
-                CookieManager.delete('sessionId');
-
                 // Очищаем таблицу результатов
                 updateResultsTable([]);
 

@@ -55,15 +55,23 @@ public class FastCGIServer {
 
     // Парсим параметры из query string
     Map<String, String> params = parseQueryString(queryString);
-    String sessionId = params.get("sessionId");
     String action = params.get("action");
+
+    // Получаем sessionId из cookies
+    String sessionId = getSessionIdFromCookies();
 
     if ("DELETE".equals(requestMethod) && "clear".equals(action)) {
       if (sessionId != null && !sessionId.trim().isEmpty()) {
         boolean deleted = SessionManager.clearSession(sessionId.trim());
         if (deleted) {
-          System.out.println(
-              successJsonResult("{\"status\": \"success\", \"message\": \"Session cleared\"}"));
+          // При очистке сессии удаляем cookie
+          String response =
+              "Set-Cookie: sessionId=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT\r\n"
+                  + "Content-Type: application/json; charset=UTF-8\r\n"
+                  + "Content-Length: 46\r\n"
+                  + "\r\n"
+                  + "{\"status\": \"success\", \"message\": \"Session cleared\"}";
+          System.out.println(response);
         } else {
           System.out.println(errorResult("Session not found"));
         }
@@ -79,7 +87,8 @@ public class FastCGIServer {
       String jsonResponse = buildJsonResponse(allResults);
       System.out.println(successJsonResult(jsonResponse));
     } else {
-      System.out.println(errorResult("Missing sessionId parameter"));
+      // Если нет sessionId - возвращаем пустой результат
+      System.out.println(successJsonResult("{\"results\": []}"));
     }
   }
 
@@ -108,7 +117,8 @@ public class FastCGIServer {
     String xStr = requestBody.get("xVal");
     String yStr = requestBody.get("yVal");
     String rStr = requestBody.get("rVal");
-    String sessionId = requestBody.get("sessionId");
+
+    String sessionId = getSessionIdFromCookies();
 
     if (xStr == null || yStr == null || rStr == null) {
       System.out.println(errorResult("Missing required parameters"));
@@ -149,10 +159,11 @@ public class FastCGIServer {
     SessionManager.CalculationResult result =
         new SessionManager.CalculationResult(x, y, r, isInArea, currentTime, executionTime);
 
-    // Генерируем или извлекаем session ID
+    // Проверка наличия sessionId
     if (sessionId == null || sessionId.trim().isEmpty()) {
-      System.out.println(errorResult("Missing sessionId parameter"));
-      return;
+      sessionId = "sess_" + System.currentTimeMillis() + "_" +
+              Integer.toHexString((int) (Math.random() * 1000000));
+      System.err.println("Generated new sessionId: " + sessionId);
     }
 
     // Добавляем в сессию
@@ -163,9 +174,9 @@ public class FastCGIServer {
 
     // Строим и отправляем JSON ответ
     String jsonResponse = buildJsonResponse(allResults);
-    System.out.println(successJsonResult(jsonResponse));
+    System.out.println(successJsonResult(jsonResponse, sessionId));
 
-    System.out.printf(
+    System.err.printf(
         "Processed request: x=%f, y=%f, r=%f, result=%b, time=%fms\n",
         x, y, r, isInArea, executionTime);
   }
@@ -227,8 +238,15 @@ public class FastCGIServer {
   }
 
   /** Создает успешный JSON ответ */
-  private static String successJsonResult(String jsonBody) {
+  private static String successJsonResult(String jsonBody, String sessionId) {
+    String cookieHeader = "";
+    if (sessionId != null && !sessionId.trim().isEmpty()) {
+      cookieHeader =
+          "Set-Cookie: sessionId=" + sessionId + "; Path=/; HttpOnly; SameSite=Strict\r\n";
+    }
+
     return "Content-Type: application/json; charset=UTF-8\r\n"
+        + cookieHeader
         + "Content-Length: "
         + jsonBody.getBytes(StandardCharsets.UTF_8).length
         + "\r\n"
@@ -237,6 +255,29 @@ public class FastCGIServer {
         + "Access-Control-Allow-Headers: Content-Type\r\n"
         + "\r\n"
         + jsonBody;
+  }
+
+  /** Перегруженная версия без sessionId */
+  private static String successJsonResult(String jsonBody) {
+    return successJsonResult(jsonBody, null);
+  }
+
+  /** Получает sessionId из cookies */
+  private static String getSessionIdFromCookies() {
+    String cookieHeader = FCGIInterface.request.params.getProperty("HTTP_COOKIE");
+    if (cookieHeader == null) {
+      return null;
+    }
+
+    String[] cookies = cookieHeader.split(";");
+    for (String cookie : cookies) {
+      String[] parts = cookie.trim().split("=", 2);
+      if (parts.length == 2 && "sessionId".equals(parts[0].trim())) {
+        return parts[1].trim();
+      }
+    }
+
+    return null;
   }
 
   /** Создает ответ с ошибкой в JSON формате */

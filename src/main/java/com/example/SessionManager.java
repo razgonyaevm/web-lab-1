@@ -21,7 +21,7 @@ public class SessionManager {
         Files.createDirectories(sessionsPath);
       }
 
-//      loadAllSessions();
+      //      loadAllSessions();
     } catch (IOException e) {
       System.err.println("Warning: Could not create sessions directory: " + e.getMessage());
     }
