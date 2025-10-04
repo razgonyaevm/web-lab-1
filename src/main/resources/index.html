@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторная работа: Проверка попадания точки в область</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0 auto;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        .error {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        input.error-border {
+            border: 2px solid red;
+        }
+
+        .header {
+            font-family: cursive;
+            color: #0000FF;
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        div {
+            color: #333333;
+        }
+
+        .header {
+            color: #0000FF;
+        }
+
+        .graph, .form, .results {
+            display: block;
+            margin: 20px 0;
+        }
+
+        /* Селектор дочерних элементов: стили для label внутри .form */
+        .form > label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+
+        /* Селектор атрибутов: для input типа text */
+        input[type="text"] {
+            width: 200px;
+            padding: 5px;
+            border: 1px solid #cccccc;
+            margin-left: 5%;
+        }
+
+        /* Когда input получает фокус (при клике мышью, например) */
+        input:focus {
+            background-color: #e6f7ff;
+            border-color: #66afe9;
+        }
+
+        .submit-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-left: 10%;
+        }
+
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+
+        .submit-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #dddddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .radio-group {
+            margin-left: 5%;
+        }
+
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(to right, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 9999;
+            max-width: 300px;
+            word-wrap: break-word;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            transition: opacity 0.3s ease;
+        }
+
+        .clean-btn {
+            margin-left: 10px;
+            padding: 10px 20px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .clean-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .clean-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+    </style>
+</head>
+<body>
+<div class="header">
+    Разработчик: Разгоняев Максим Витальевич<br>
+    Группа: P3231<br>
+    Вариант: 467211
+    <div id="current-time" style="font-size: 14px; margin-top: 5px;"></div>
+</div>
+
+<div class="graph">
+    <canvas id="canvas" width="360" height="360" style="border: 1px solid #000;"></canvas>
+</div>
+
+<div class="form">
+    <form id="inputForm">
+        <label for="x">X (выберите значение):</label>
+        <div class="radio-group">
+            <input type="radio" name="x" value="-3"> -3
+            <input type="radio" name="x" value="-2"> -2
+            <input type="radio" name="x" value="-1"> -1
+            <input type="radio" name="x" value="0"> 0
+            <input type="radio" name="x" value="1"> 1
+            <input type="radio" name="x" value="2"> 2
+            <input type="radio" name="x" value="3"> 3
+            <input type="radio" name="x" value="4"> 4
+        </div>
+
+        <label for="y">Y (от -5 до 5):</label> <br>
+        <input type="text" name="y" id="y"> <br>
+
+        <label for="r">R (выберите значение):</label>
+        <div class="radio-group">
+            <input type="radio" name="r" value="1" checked> 1
+            <input type="radio" name="r" value="2"> 2
+            <input type="radio" name="r" value="3"> 3
+            <input type="radio" name="r" value="4"> 4
+            <input type="radio" name="r" value="5"> 5
+        </div>
+
+        <button type="button" class="submit-btn" onclick="submitForm()">Отправить</button>
+        <button type="button" class="clean-btn" onclick="clearSession()">Очистить сессию</button>
+    </form>
+</div>
+
+<div class="results">
+    <table id="resultsTable">
+        <thead>
+        <tr>
+            <th>X</th>
+            <th>Y</th>
+            <th>R</th>
+            <th>Попадание</th>
+            <th>Текущее время</th>
+            <th>Время выполнения</th>
+        </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<script src="./app.js"></script>
+</body>
+</html>
