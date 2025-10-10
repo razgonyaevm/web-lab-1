@@ -3,8 +3,18 @@ const CONFIG = {
         HOST: window.location.hostname || 'localhost',
         PORT: window.location.port || '8080',
         PATH: '/fcgi-bin/app.jar'
+    },
+    AUTH: {
+        USERNAME: 'admin',
+        PASSWORD: 'password'
     }
 };
+
+// Функция для получения базового заголовка авторизации
+function getAuthHeader() {
+    const credentials = btoa(`${CONFIG.AUTH.USERNAME}:${CONFIG.AUTH.PASSWORD}`);
+    return `Basic ${credentials}`;
+}
 
 // Функция для получения полного URL
 function getServerURL() {
@@ -423,6 +433,7 @@ function handleFormSubmit(e) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': getAuthHeader()
         },
         body: formData
     })
@@ -665,7 +676,10 @@ function updateResultsTable(results) {
 // Функция для загрузки сохраненных результатов
 function loadSavedResults() {
     fetch(getServerURL(), {
-        method: 'GET'
+        method: 'GET',
+        headers: {
+            'Authorization': getAuthHeader()
+        }
     })
         .then(response => {
             if (response.ok) {
@@ -727,7 +741,10 @@ function clearSession() {
 
     // Отправляем запрос на очистку сессии
     fetch(getServerURL() + '?action=clear', {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+            'Authorization': getAuthHeader()
+        }
     })
         .then(response => {
             if (response.ok) {

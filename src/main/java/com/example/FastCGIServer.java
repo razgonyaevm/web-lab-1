@@ -5,11 +5,15 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class FastCGIServer {
+  public static final String VALID_USERNAME = "admin";
+  private static final String VALID_PASSWORD = "password";
+  private static final String AUTH_REALM = "Area Checker API";
 
   public static void main(String[] args) {
     System.out.println("Starting FastCGI server...");
@@ -43,6 +47,12 @@ public class FastCGIServer {
 
   /** Обрабатывает GET запрос */
   private static void handleGetRequest() {
+      // Проверка аутентификации в начале метода
+      if (!checkAuthentication()) {
+          System.out.println(sendAuthenticationRequest());
+          return;
+      }
+
     String queryString = FCGIInterface.request.params.getProperty("QUERY_STRING");
     String scriptName = FCGIInterface.request.params.getProperty("SCRIPT_NAME");
     String requestMethod = FCGIInterface.request.params.getProperty("REQUEST_METHOD");
@@ -94,6 +104,12 @@ public class FastCGIServer {
 
   /** Обрабатывает POST запрос */
   private static void handlePostRequest() {
+      // Проверка аутентификации в начале метода
+      if (!checkAuthentication()) {
+          System.out.println(sendAuthenticationRequest());
+          return;
+      }
+      
     String contentType = FCGIInterface.request.params.getProperty("CONTENT_TYPE");
     String scriptName = FCGIInterface.request.params.getProperty("SCRIPT_NAME");
 
@@ -161,8 +177,11 @@ public class FastCGIServer {
 
     // Проверка наличия sessionId
     if (sessionId == null || sessionId.trim().isEmpty()) {
-      sessionId = "sess_" + System.currentTimeMillis() + "_" +
-              Integer.toHexString((int) (Math.random() * 1000000));
+      sessionId =
+          "sess_"
+              + System.currentTimeMillis()
+              + "_"
+              + Integer.toHexString((int) (Math.random() * 1000000));
       System.err.println("Generated new sessionId: " + sessionId);
     }
 
@@ -314,5 +333,47 @@ public class FastCGIServer {
 
     json.append("]}");
     return json.toString();
+  }
+
+    /** Отправляет запрос на аутентификацию */
+    private static String sendAuthenticationRequest() {
+        return "Status: 401 Unauthorized\r\n" +
+                "WWW-Authenticate: Basic realm=\"" + AUTH_REALM + "\", charset=\"UTF-8\"\r\n" +
+                "Content-Type: application/json; charset=UTF-8\r\n" +
+                "Content-Length: 72\r\n" +
+                "\r\n" +
+                "{\"error\": \"Authentication required\", \"message\": \"Please provide credentials\"}";
+    }
+
+  /** Проверяет аутентификационные данные */
+  private static boolean checkAuthentication() {
+    String authHeader = FCGIInterface.request.params.getProperty("HTTP_AUTHORIZATION");
+
+    if (authHeader == null || !authHeader.startsWith("Basic ")) {
+      return false;
+    }
+
+    try {
+      // Декодируем Base64
+      String base64Credentials = authHeader.substring("Basic ".length()).trim();
+      byte[] decodedBytes = Base64.getDecoder().decode(base64Credentials);
+      String credentials = new String(decodedBytes, StandardCharsets.UTF_8);
+
+      // Разделяем логин и пароль
+      String[] values = credentials.split(":", 2);
+      if (values.length != 2) {
+        return false;
+      }
+
+      String username = values[0];
+      String password = values[1];
+
+      // Проверяем валидность
+      return VALID_USERNAME.equals(username) && VALID_PASSWORD.equals(password);
+
+    } catch (Exception e) {
+      System.err.println("Error decoding authentication: " + e.getMessage());
+      return false;
+    }
   }
 }
